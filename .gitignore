@@ -1,0 +1,13 @@
+# Mac OS
+/**/.DS_Store
+
+# Development
+/.idea
+/.vscode
+
+# Dependencies
+/yarn-error.log
+/node_modules
+
+# Environment
+.env
