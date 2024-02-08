@@ -4,7 +4,7 @@
   "description": "Telegram bot for convert attached images to pdf",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node src/index.js"
   },
   "repository": {
     "type": "git",
@@ -20,6 +20,7 @@
   },
   "homepage": "https://github.com/SMAY666/tg-convert-attached-photo-to-pdf#readme",
   "devDependencies": {
+    "eslint": "^8.56.0",
     "eslint-config-bondarenko-style": "^1.1.1"
   }
 }
