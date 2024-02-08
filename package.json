@@ -1,0 +1,25 @@
+{
+  "name": "tg-convert-attached-photo-to-pdf",
+  "version": "0.1.0",
+  "description": "Telegram bot for convert attached images to pdf",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/SMAY666/tg-convert-attached-photo-to-pdf.git"
+  },
+  "author": {
+    "name": "Sazonov Matvey Andreevich",
+    "email": "matvey150603@gmail.com"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/SMAY666/tg-convert-attached-photo-to-pdf/issues"
+  },
+  "homepage": "https://github.com/SMAY666/tg-convert-attached-photo-to-pdf#readme",
+  "devDependencies": {
+    "eslint-config-bondarenko-style": "^1.1.1"
+  }
+}
