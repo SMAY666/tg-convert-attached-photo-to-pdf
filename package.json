@@ -3,9 +3,8 @@
   "version": "0.1.0",
   "description": "Telegram bot for convert attached images to pdf",
   "main": "index.js",
-  "type": "module",
   "scripts": {
-    "start": "node dist/index.js",
+    "start": "yarn build && node dist/index.js",
     "build": "tsc --project ./tsconfig.json"
   },
   "repository": {
@@ -25,12 +24,16 @@
     "@types/node": "^20.11.17",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
+    "envalid": "^8.0.0",
     "eslint": "^8.56.0",
     "eslint-config-bondarenko-style": "^1.1.1",
     "typescript": "^5.3.3"
   },
   "dependencies": {
     "axios": "^1.6.7",
-    "dotenv": "^16.4.1"
+    "dotenv": "^16.4.1",
+    "fastify": "^4.26.1",
+    "socket.io": "^4.7.4",
+    "telegraf": "^4.15.3"
   }
 }
