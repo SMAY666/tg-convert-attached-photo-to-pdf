@@ -1,5 +1,7 @@
 import 'dotenv/config';
-import {cleanEnv, str} from 'envalid';
+import {cleanEnv, str, makeValidator} from 'envalid';
+
+const arr = makeValidator<string[]>((input: string) => input.split(','));
 
 export const ENV = Object.assign(
     process.env,
@@ -10,5 +12,6 @@ export const ENV = Object.assign(
         API_URL: str({
             default: 'https://api.telegram.org',
         }),
+        WHITE_LIST: arr(),
     }),
 );
