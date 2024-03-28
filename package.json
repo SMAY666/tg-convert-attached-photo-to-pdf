@@ -24,6 +24,7 @@
     "@types/node": "^20.11.17",
     "@types/node-telegram-bot-api": "^0.64.6",
     "@types/pdfkit": "^0.13.4",
+    "@types/uuid": "^9.0.8",
     "@typescript-eslint/eslint-plugin": "^6.21.0",
     "@typescript-eslint/parser": "^6.21.0",
     "envalid": "^8.0.0",
@@ -37,6 +38,6 @@
     "fastify": "^4.26.1",
     "node-telegram-bot-api": "^0.65.1",
     "pdfkit": "^0.15.0",
-    "uuidv4": "^6.2.13"
+    "uuid": "^9.0.1"
   }
 }
