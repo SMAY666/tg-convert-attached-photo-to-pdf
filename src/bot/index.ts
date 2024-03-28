@@ -1,6 +1,12 @@
+import TelegramBot, {PhotoSize} from 'node-telegram-bot-api';
+import PDFDocument from 'pdfkit';
 import {ENV} from '../constants/env';
-import TelegramBot from 'node-telegram-bot-api';
+import {createWriteStream, writeFileSync} from 'node:fs';
+import {sendRequest} from '../requests';
 
+import {generateUnicFilename} from '../utils/generateUnicFilename';
+import path from 'node:path';
+import {UPLOADS_DIR} from '../constants/path';
 
 class Bot {
     constructor() {
@@ -19,7 +25,7 @@ class Bot {
 
     private readonly botInstance: TelegramBot;
     private inProcess: boolean;
-    private photos: TelegramBot.PhotoSize[] | null;
+    private photos: (TelegramBot.PhotoSize & {filePath?: string})[] | null;
     private readonly commands: {
         command: string
         description: string
@@ -33,7 +39,7 @@ class Bot {
     }
 
 
-    private checkUpdates() {
+    private checkUpdates(): void {
         this.botInstance.on('message', async (message) => {
             if (!message.from?.username || !this.userHasAccess(message.from?.username)) {
                 await this.sendMessageToUser(message.chat.id, 'У вас нет доступа для взаимодействия со мной');
@@ -57,7 +63,7 @@ class Bot {
         });
     }
 
-    private async getAttachments(message: TelegramBot.Message) {
+    private async getAttachments(message: TelegramBot.Message): Promise<void> {
         if (!message.photo) {
             await this.sendMessageToUser(message.chat.id, 'Сообщение должно содержать фотографии или быть командой (Menu)');
             return;
@@ -67,11 +73,11 @@ class Bot {
         this.photos?.push(photoFromMessage);
     }
 
-    private async sendMessageToUser(chatId: number, test: string) {
+    private async sendMessageToUser(chatId: number, test: string): Promise<void> {
         await this.botInstance.sendMessage(chatId, test);
     }
 
-    private async activateSave(command: '/save' | '/done', chatId: number) {
+    private async activateSave(command: '/save' | '/done', chatId: number): Promise<void> {
         if (command === '/save') {
             if (this.inProcess) {
                 await this.sendMessageToUser(chatId, 'Можете отправлять фотографии');
@@ -83,7 +89,11 @@ class Bot {
             if (!this.inProcess) {
                 await this.sendMessageToUser(chatId, 'Сохранение уже завершено');
             }
-            // await this.saveToPdf(this.photos);
+            if (this.photos && this.photos.length > 0) {
+                await this.downloadFile(this.photos[0]);
+            } else {
+                await this.sendMessageToUser(chatId, 'PDF файл не будет создан так как вы не добавили фотографии');
+            }
             this.photos = null;
             this.inProcess = false;
             await this.sendMessageToUser(chatId, 'Сохранение завершено');
@@ -102,10 +112,55 @@ class Bot {
 
     // ----- [ HELP METHODS ] ------------------------------------------------------------------------------------------
 
-    /* private async saveToPdf(photos: PhotoSize[] | null) {
-        if (!photos) {
-
+    private async getFilePath(photo: PhotoSize): Promise<string> {
+        if (!this.photos) {
+            throw new Error('Комманда \"/save\" не была выполнена');
         }
+        const response = await sendRequest(
+            'GET',
+            `${ENV.API_URL}/bot${ENV.BOT_TOKEN}/getFile`,
+            {file_id: photo.file_id},
+        );
+
+        if (response.data.ok === false) {
+            throw new Error('Request failed:', response.data.result);
+        }
+
+        const index = this.photos?.findIndex((tgData) => tgData === photo);
+
+        if (index === -1) {
+            throw Error('Фотография не из текущей сессии');
+        }
+
+        const foundPhoto = this.photos[index];
+
+        foundPhoto.filePath = response.data.result.file_path;
+
+        // @ts-ignore
+        return foundPhoto.filePath;
+    }
+
+    private async downloadFile(photo: PhotoSize) {
+        const filePath = await this.getFilePath(photo);
+
+        const response = await sendRequest(
+            'GET',
+            `${ENV.API_URL}/file/bot${ENV.BOT_TOKEN}/${filePath}`,
+            undefined,
+            undefined,
+            'arraybuffer',
+        );
+
+        if (response.status === 200) {
+            writeFileSync(path.join(
+                UPLOADS_DIR,
+                generateUnicFilename(filePath.replace('/', '-'))), response.data);
+        }
+    }
+
+    /* private async saveToPdf(photos: PhotoSize[]) {
+        const document = new PDFDocument();
+        document.pipe(createWriteStream('yourImages.pdf'));
     } */
 
 }
