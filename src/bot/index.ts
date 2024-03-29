@@ -1,11 +1,11 @@
+import path from 'path';
+import * as fs from 'fs';
 import TelegramBot, {PhotoSize} from 'node-telegram-bot-api';
 import PDFDocument from 'pdfkit';
-import {ENV} from '../constants/env';
 
+import {ENV} from '../constants/env';
 import {generateUnicFilename} from '../utils/generateUnicFilename';
-import path from 'path';
-import {UPLOADS_DIR, USER_DIRECTORY} from '../constants/path';
-import * as fs from 'fs';
+import {UPLOADS_DIR} from '../constants/path';
 import {createDir} from '../utils/fileTools';
 
 class Bot {
@@ -130,7 +130,7 @@ class Bot {
             for (const photo of this.photos) {
                 await this.downloadFile(photo, UPLOADS_DIR);
             }
-            await this.getPdf(this.photos, chatId);
+            await this.getPdf(this.photos);
             await this.sendMessageToUser(chatId, ' Вот ваш файл. Спасибо за использование бота!\n' +
                 'Если во время работы что-то пошло не так, пожалуйства, напишите сюда @sm4yy', this.serverPdfName);
         } else {
@@ -161,15 +161,15 @@ class Bot {
 
             fs.rename(newFile, photo.pathOnServer, (error) => {
                 if (error) {
-                    throw new Error(`error: ${error}`);
+                    throw new Error(`error: ${JSON.stringify(error)}`);
                 }
             });
         } catch (error) {
-            throw new Error(`[downloadFiles]: Failed to download file ${error}`);
+            throw new Error(`[downloadFiles]: Failed to download file ${JSON.stringify(error)}`);
         }
     }
 
-    private getPdf(photos: (PhotoSize & {filePath?: string, pathOnServer?: string})[], chatId: number) {
+    private getPdf(photos: (PhotoSize & {filePath?: string, pathOnServer?: string})[]) {
         const filename = generateUnicFilename('YourPdf.pdf');
 
         return new Promise((resolve, reject) => {
@@ -195,7 +195,7 @@ class Bot {
                 });
                 document.end();
             } catch (error) {
-                reject(new Error(`[saveToPdf]: Failed to save photos to pdf ${error}`));
+                reject(new Error(`[saveToPdf]: Failed to save photos to pdf ${JSON.stringify(error)}`));
             }
         });
     }
