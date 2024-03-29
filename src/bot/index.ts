@@ -113,6 +113,7 @@ class Bot {
     private async activateSave(chatId: number): Promise<void> {
         if (this.inProcess) {
             await this.sendMessageToUser(chatId, 'Можете отправлять фотографии');
+            return;
         }
         this.photos = [];
         this.inProcess = true;
