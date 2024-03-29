@@ -1,6 +1,6 @@
 {
   "name": "tg-convert-attached-photo-to-pdf",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Telegram bot for convert attached images to pdf",
   "main": "index.js",
   "scripts": {
