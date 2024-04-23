@@ -23,6 +23,6 @@ WHITE_LIST=username1,username2,username3...
 # Bot commands
 
 */help* - use for get all bot commands and there description  
-*/save* - use before sending images (Only before send first image or "/done" command called). Command serve as a flag for start to collect attached images 
+*/save* - use before sending images (Only before send first image or "/done" command called). Command serve as a flag for start to collect attached images  
 */photos* - use for get number of collected attachments  
 */done* - use after you added all images you want
