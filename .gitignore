@@ -11,3 +11,5 @@
 
 # Environment
 .env
+/dist
+/uploads
