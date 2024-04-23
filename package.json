@@ -7,10 +7,6 @@
     "start": "yarn build && node dist/index.js",
     "build": "tsc --project ./tsconfig.json"
   },
-  "repository": {
-    "type": "git",
-    "url": "git+https://github.com/SMAY666/tg-convert-attached-photo-to-pdf.git"
-  },
   "author": {
     "name": "Sazonov Matvey Andreevich",
     "email": "matvey150603@gmail.com"
