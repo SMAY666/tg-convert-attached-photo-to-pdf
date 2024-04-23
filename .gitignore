@@ -12,4 +12,4 @@
 # Environment
 .env
 /dist
-/public
+/uploads

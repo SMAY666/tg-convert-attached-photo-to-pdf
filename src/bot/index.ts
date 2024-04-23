@@ -1,12 +1,14 @@
 import path from 'path';
 import * as fs from 'fs';
-import TelegramBot, {PhotoSize} from 'node-telegram-bot-api';
-import PDFDocument from 'pdfkit';
+import {Readable} from 'node:stream';
 
+import TelegramBot from 'node-telegram-bot-api';
+
+import PDFDocument from 'pdfkit';
 import {ENV} from '../constants/env';
 import {generateUnicFilename} from '../utils/generateUnicFilename';
 import {UPLOADS_DIR} from '../constants/path';
-import {createDir} from '../utils/fileTools';
+
 
 class Bot {
     constructor() {
@@ -17,8 +19,10 @@ class Bot {
             {command: 'done', description: 'Выполните команду после отправки всех фотографий'},
             {command: 'help', description: 'Список команд бота'},
         ];
+
+        this.files = new Map();
+
         this.inProcess = false;
-        this.photos = null;
         this.serverPdfName = '';
     }
 
@@ -31,8 +35,9 @@ class Bot {
         description: string
     }[];
 
+    private readonly files: Map<string, Buffer[]>;
+
     private inProcess: boolean;
-    private photos: (TelegramBot.PhotoSize & {pathOnServer?: string})[] | null;
     private serverPdfName: string;
 
     // ----- [ PRIVATE METHODS ] ---------------------------------------------------------------------------------------
@@ -50,7 +55,7 @@ class Bot {
                 switch (message.text) {
                     case '/start':
                         await this.showInstruction(message.chat.id);
-                        await createDir(message.chat.id.toString());
+                        // createDir(message.chat.id.toString());
                         break;
                     case '/help':
                         await this.showInstruction(message.chat.id);
@@ -59,7 +64,7 @@ class Bot {
                         await this.activateSave(message.chat.id);
                         break;
                     case '/photos':
-                        await this.sendMessageToUser(message.chat.id, `Кол-во фотографий: ${this.photos?.length ?? '0'}`);
+                        await this.sendMessageToUser(message.chat.id, `Кол-во фотографий: ${this.files.get(message.chat.id.toString())?.length ?? 0}`);
                         break;
                     case '/done':
                         await this.doneSave(message.chat.id);
@@ -81,7 +86,17 @@ class Bot {
         }
 
         const photoFromMessage = message.photo[message.photo.length - 1];
-        this.photos?.push(photoFromMessage);
+
+        const files = this.files.get(message.chat.id.toString());
+        const stream = this.botInstance.getFileStream(photoFromMessage.file_id);
+        const buffer = await this.streamToBuffer(stream);
+
+        if (files) {
+            files.push(buffer);
+        } else {
+            this.files.set(message.chat.id.toString(), [buffer]);
+        }
+
     }
 
     private async sendMessageToUser(chatId: number, text?: string, attachmentDocName?: string): Promise<void> {
@@ -115,8 +130,8 @@ class Bot {
             await this.sendMessageToUser(chatId, 'Можете отправлять фотографии');
             return;
         }
-        this.photos = [];
         this.inProcess = true;
+        this.files.set(chatId.toString(), []);
         await this.sendMessageToUser(chatId, 'Теперь отправьте мне фотографии, которые нужно сохранить');
     }
 
@@ -126,17 +141,16 @@ class Bot {
             await this.sendMessageToUser(chatId, 'Сохранение уже завершено');
         }
         await this.sendMessageToUser(chatId, 'Ожидайте ваш файл. Это займёт некоторое время');
-        if (this.photos && this.photos.length > 0) {
-            for (const photo of this.photos) {
-                await this.downloadFile(photo, UPLOADS_DIR);
-            }
-            await this.getPdf(this.photos);
+        const photos = this.files.get(chatId.toString());
+        if (photos && photos.length > 0) {
+            await this.getPdf(photos);
             await this.sendMessageToUser(chatId, ' Вот ваш файл. Спасибо за использование бота!\n' +
                 'Если во время работы что-то пошло не так, пожалуйства, напишите сюда @sm4yy', this.serverPdfName);
+            fs.rmSync(path.join(UPLOADS_DIR, this.serverPdfName));
         } else {
             await this.sendMessageToUser(chatId, 'PDF файл не будет создан так как вы не добавили фотографии');
         }
-        this.photos = null;
+        this.files.delete(chatId.toString());
         this.inProcess = false;
     }
 
@@ -152,48 +166,41 @@ class Bot {
 
     // ----- [ HELP METHODS ] ------------------------------------------------------------------------------------------
 
-    private async downloadFile(photo: PhotoSize & {pathOnServer?: string}, dirToSave: string): Promise<void> {
-        try {
-            const newFile = await this.botInstance.downloadFile(photo.file_id, dirToSave);
-
-            const filename = generateUnicFilename('photo.jpg').split('.')[0];
-            photo.pathOnServer = path.join(dirToSave, filename + path.extname(newFile));
-
-            fs.rename(newFile, photo.pathOnServer, (error) => {
-                if (error) {
-                    throw new Error(`error: ${JSON.stringify(error)}`);
-                }
-            });
-        } catch (error) {
-            throw new Error(`[downloadFiles]: Failed to download file ${JSON.stringify(error)}`);
-        }
+    private streamToBuffer(stream: Readable): Promise<Buffer> {
+        return new Promise((resolve, reject) => {
+            const chunks: any[] = [];
+            stream.on('data', (chunk) => chunks.push(chunk));
+            stream.on('end', () => resolve(Buffer.concat(chunks)));
+            stream.on('error', reject);
+        });
     }
 
-    private getPdf(photos: (PhotoSize & {filePath?: string, pathOnServer?: string})[]) {
+    private getPdf(photos: Buffer[]) {
         const filename = generateUnicFilename('YourPdf.pdf');
 
         return new Promise((resolve, reject) => {
             try {
                 const document = new PDFDocument({autoFirstPage: false});
                 const stream = fs.createWriteStream(path.join(UPLOADS_DIR, filename));
-
                 stream.on('finish', () => {
                     this.serverPdfName = filename;
                     resolve(this.serverPdfName);
                 });
+                stream.on('error', (error) => reject(error));
 
                 document.pipe(stream);
 
+
                 photos.forEach((photo) => {
                     document.addPage();
-                    if (photo.pathOnServer) {
-                        document.image(photo.pathOnServer, 0, 0, {
-                            width: document.page.width,
-                            height: document.page.height,
-                        });
-                    }
+                    document.image(photo, 0, 0, {
+                        width: document.page.width,
+                        height: document.page.height,
+                    });
                 });
+
                 document.end();
+
             } catch (error) {
                 reject(new Error(`[saveToPdf]: Failed to save photos to pdf ${JSON.stringify(error)}`));
             }
