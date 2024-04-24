@@ -20,7 +20,7 @@ class Bot {
             {command: 'help', description: 'Список команд бота'},
         ];
 
-        this.files = new Map();
+        this.photos = new Map();
 
         this.inProcess = false;
         this.serverPdfName = '';
@@ -35,8 +35,7 @@ class Bot {
         description: string
     }[];
 
-    private readonly files: Map<string, Buffer[]>;
-
+    private readonly photos: Map<string, Buffer[]>;
     private inProcess: boolean;
     private serverPdfName: string;
 
@@ -46,16 +45,15 @@ class Bot {
         return ENV.WHITE_LIST.includes(username);
     }
 
-
     private checkUpdates(): void {
         this.botInstance.on('message', async (message) => {
             if (!message.from?.username || !this.userHasAccess(message.from?.username)) {
                 await this.sendMessageToUser(message.chat.id, 'У вас нет доступа для взаимодействия со мной');
             } else {
+                const userPhotos = this.photos.get(message.chat.id.toString());
                 switch (message.text) {
                     case '/start':
                         await this.showInstruction(message.chat.id);
-                        // createDir(message.chat.id.toString());
                         break;
                     case '/help':
                         await this.showInstruction(message.chat.id);
@@ -64,7 +62,10 @@ class Bot {
                         await this.activateSave(message.chat.id);
                         break;
                     case '/photos':
-                        await this.sendMessageToUser(message.chat.id, `Кол-во фотографий: ${this.files.get(message.chat.id.toString())?.length ?? 0}`);
+                        await this.sendMessageToUser(message.chat.id, `Кол-во фотографий: ${userPhotos?.length ?? 0}`);
+                        if (userPhotos && userPhotos.length > 0) {
+                            await this.sendMessageToUser(message.chat.id, undefined, undefined, userPhotos);
+                        }
                         break;
                     case '/done':
                         await this.doneSave(message.chat.id);
@@ -87,19 +88,19 @@ class Bot {
 
         const photoFromMessage = message.photo[message.photo.length - 1];
 
-        const files = this.files.get(message.chat.id.toString());
+        const files = this.photos.get(message.chat.id.toString());
         const stream = this.botInstance.getFileStream(photoFromMessage.file_id);
         const buffer = await this.streamToBuffer(stream);
 
         if (files) {
             files.push(buffer);
         } else {
-            this.files.set(message.chat.id.toString(), [buffer]);
+            this.photos.set(message.chat.id.toString(), [buffer]);
         }
 
     }
 
-    private async sendMessageToUser(chatId: number, text?: string, attachmentDocName?: string): Promise<void> {
+    private async sendMessageToUser(chatId: number, text?: string, attachmentDocName?: string, photos?: Buffer[]): Promise<void> {
         if (text && !attachmentDocName) {
             await this.botInstance.sendMessage(chatId, text);
         }
@@ -114,6 +115,11 @@ class Bot {
                 });
             } catch (error) {
                 await this.sendMessageToUser(chatId, 'Извините. Что-то пошло не так..');
+            }
+        }
+        if (photos) {
+            for (const photo of photos) {
+                await this.botInstance.sendPhoto(chatId, photo);
             }
         }
     }
@@ -131,18 +137,18 @@ class Bot {
             return;
         }
         this.inProcess = true;
-        this.files.set(chatId.toString(), []);
+        this.photos.set(chatId.toString(), []);
         await this.sendMessageToUser(chatId, 'Теперь отправьте мне фотографии, которые нужно сохранить');
     }
-
 
     private async doneSave(chatId: number): Promise<void> {
         if (!this.inProcess) {
             await this.sendMessageToUser(chatId, 'Сохранение уже завершено');
+            return;
         }
-        await this.sendMessageToUser(chatId, 'Ожидайте ваш файл. Это займёт некоторое время');
-        const photos = this.files.get(chatId.toString());
+        const photos = this.photos.get(chatId.toString());
         if (photos && photos.length > 0) {
+            await this.sendMessageToUser(chatId, 'Ожидайте ваш файл. Это займёт некоторое время');
             await this.getPdf(photos);
             await this.sendMessageToUser(chatId, ' Вот ваш файл. Спасибо за использование бота!\n' +
                 'Если во время работы что-то пошло не так, пожалуйства, напишите сюда @sm4yy', this.serverPdfName);
@@ -150,7 +156,7 @@ class Bot {
         } else {
             await this.sendMessageToUser(chatId, 'PDF файл не будет создан так как вы не добавили фотографии');
         }
-        this.files.delete(chatId.toString());
+        this.photos.delete(chatId.toString());
         this.inProcess = false;
     }
 
