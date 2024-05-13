@@ -15,14 +15,12 @@ class Bot {
         this.botInstance = new TelegramBot(ENV.BOT_TOKEN, {polling: true});
         this.commands = [
             {command: 'save', description: 'Выполните команду перед использованием бота'},
-            {command: 'photos', description: 'Количество фотогпфий в списке'},
+            {command: 'photos', description: 'Количество фотографий в списке'},
             {command: 'done', description: 'Выполните команду после отправки всех фотографий'},
             {command: 'help', description: 'Список команд бота'},
         ];
 
-        this.photos = new Map();
-
-        this.inProcess = false;
+        this.users = new Map();
         this.serverPdfName = '';
     }
 
@@ -35,8 +33,7 @@ class Bot {
         description: string
     }[];
 
-    private readonly photos: Map<string, Buffer[]>;
-    private inProcess: boolean;
+    private readonly users: Map<string, {inProcess: boolean, photos: Buffer[]}>;
     private serverPdfName: string;
 
     // ----- [ PRIVATE METHODS ] ---------------------------------------------------------------------------------------
@@ -50,7 +47,7 @@ class Bot {
             if (!message.from?.username || !this.userHasAccess(message.from?.username)) {
                 await this.sendMessageToUser(message.chat.id, 'У вас нет доступа для взаимодействия со мной');
             } else {
-                const userPhotos = this.photos.get(message.chat.id.toString());
+                const userPhotos = this.users.get(message.chat.id.toString())?.photos;
                 switch (message.text) {
                     case '/start':
                         await this.showInstruction(message.chat.id);
@@ -63,7 +60,7 @@ class Bot {
                         break;
                     case '/photos':
                         await this.sendMessageToUser(message.chat.id, `Кол-во фотографий: ${userPhotos?.length ?? 0}`);
-                        if (userPhotos && userPhotos.length > 0) {
+                        if (userPhotos && userPhotos.length > 0 && userPhotos.length <= 5) {
                             await this.sendMessageToUser(message.chat.id, undefined, undefined, userPhotos);
                         }
                         break;
@@ -71,10 +68,8 @@ class Bot {
                         await this.doneSave(message.chat.id);
                         break;
                     default:
+                        await this.getAttachments(message);
                         break;
-                }
-                if (this.inProcess && (message.text !== '/save' && message.text !== '/photos' && message.text !== '/done')) {
-                    await this.getAttachments(message);
                 }
             }
         });
@@ -88,14 +83,15 @@ class Bot {
 
         const photoFromMessage = message.photo[message.photo.length - 1];
 
-        const files = this.photos.get(message.chat.id.toString());
+        const files = this.users.get(message.chat.id.toString())?.photos;
         const stream = this.botInstance.getFileStream(photoFromMessage.file_id);
         const buffer = await this.streamToBuffer(stream);
 
         if (files) {
             files.push(buffer);
         } else {
-            this.photos.set(message.chat.id.toString(), [buffer]);
+            const user = this.users.get(message.chat.id.toString());
+            this.users.set(message.chat.id.toString(), {inProcess: user?.inProcess ?? false, photos: [buffer]});
         }
 
     }
@@ -132,32 +128,32 @@ class Bot {
     }
 
     private async activateSave(chatId: number): Promise<void> {
-        if (this.inProcess) {
+        const user = this.users.get(chatId.toString());
+        if (user && user.inProcess) {
             await this.sendMessageToUser(chatId, 'Можете отправлять фотографии');
             return;
         }
-        this.inProcess = true;
-        this.photos.set(chatId.toString(), []);
+        this.users.set(chatId.toString(), {inProcess: true, photos: []});
         await this.sendMessageToUser(chatId, 'Теперь отправьте мне фотографии, которые нужно сохранить');
     }
 
     private async doneSave(chatId: number): Promise<void> {
-        if (!this.inProcess) {
+        const user = this.users.get(chatId.toString());
+        if (!user || !user.inProcess) {
             await this.sendMessageToUser(chatId, 'Сохранение уже завершено');
             return;
         }
-        const photos = this.photos.get(chatId.toString());
+        const photos = this.users.get(chatId.toString())?.photos;
         if (photos && photos.length > 0) {
             await this.sendMessageToUser(chatId, 'Ожидайте ваш файл. Это займёт некоторое время');
             await this.getPdf(photos);
             await this.sendMessageToUser(chatId, ' Вот ваш файл. Спасибо за использование бота!\n' +
-                'Если во время работы что-то пошло не так, пожалуйства, напишите сюда @sm4yy', this.serverPdfName);
+                'Если во время работы что-то пошло не так, пожалуйства, напишите сюда: @sm4yy', this.serverPdfName);
             fs.rmSync(path.join(UPLOADS_DIR, this.serverPdfName));
         } else {
             await this.sendMessageToUser(chatId, 'PDF файл не будет создан так как вы не добавили фотографии');
         }
-        this.photos.delete(chatId.toString());
-        this.inProcess = false;
+        this.users.delete(chatId.toString());
     }
 
 
