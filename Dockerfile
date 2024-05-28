@@ -1,9 +1,9 @@
 FROM node:20
 
 RUN mkdir -p /app
-WORKDIR /app
+RUN mkdir /app/uploads
 
-RUN mkdir /uploads
+WORKDIR /app
 
 COPY package.json yarn.lock  ./
 RUN yarn install --immutable
