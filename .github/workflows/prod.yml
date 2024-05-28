@@ -1,0 +1,39 @@
+name: Production
+
+on:
+  push:
+    branches:
+      - main
+jobs:
+  prepare:
+    runs-on: [self-hosted]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      - name: Create .env file
+        run: |
+          sudo touch .env
+          echo BOT_TOKEN=${{secrets.BOT_TOKEN}} >> .env
+          echo WHITE_LIST=${{vars.WHITE_LIST}} >> .env
+
+  build:
+    runs-on: [self-hosted]
+    needs: prepare
+    steps:
+      - name: Building the image
+        run: docker-compose build
+
+  start:
+    runs-on: [self-hosted]
+    needs: build
+    steps:
+      - name: Running the container
+        run: docker-compose up -d --remove-orphans
+
+  clear:
+    runs-on: [self-hosted]
+    needs: start
+    steps:
+      - name: Removing old image
+        run: docker image prune -f
+
