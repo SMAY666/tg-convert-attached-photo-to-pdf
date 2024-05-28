@@ -11,6 +11,11 @@ jobs:
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
+      - name: Create .env file
+        run: |
+          touch .env
+          echo BOT_TOKEN=${{secret.BOT_TOKEN}} >> .env
+          echo WHITE_LIST=${{vars.WHITE_LIST}} >> .env
 
   build:
     runs-on: [self-hosted]
