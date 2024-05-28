@@ -161,7 +161,7 @@ class Bot {
 
     public async start(): Promise<void> {
         await this.botInstance.setMyCommands(this.commands);
-        console.log('Bot started');
+        console.log(`[${Date.now()}] Bot started`);
         this.checkUpdates();
     }
 
