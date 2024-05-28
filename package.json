@@ -4,7 +4,7 @@
   "description": "Telegram bot for convert attached images to pdf",
   "main": "index.js",
   "scripts": {
-    "start": "yarn build && node dist/index.js",
+    "start": "node dist/index.js",
     "build": "tsc --project ./tsconfig.json"
   },
   "author": {
