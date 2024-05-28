@@ -12,4 +12,5 @@ RUN yarn build
 
 RUN rm -rf src
 
+CMD ["mkdir", "uploads"]
 CMD ["yarn", "start"]
