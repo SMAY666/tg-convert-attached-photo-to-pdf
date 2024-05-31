@@ -38,11 +38,6 @@ class Bot {
 
     // ----- [ PRIVATE METHODS ] ---------------------------------------------------------------------------------------
 
-    private userHasAccess(username: string): boolean {
-        return ENV.WHITE_LIST.includes(username);
-
-    }
-
     private checkUpdates(): void {
         this.botInstance.on('message', async (message) => {
             const userPhotos = this.users.get(message.chat.id.toString())?.photos;
