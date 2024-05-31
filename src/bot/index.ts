@@ -113,10 +113,11 @@ class Bot {
     }
 
     private async showInstruction(chatId: number): Promise<void> {
-        await this.sendMessageToUser(chatId, 'Вот список команд бота. Для удобства используйте кнопку "Menu"');
+        let messageText = 'Вот список команд бота. Для удобства используйте кнопку "Menu"\n\n';
         for (const command of this.commands) {
-            await this.sendMessageToUser(chatId, `${command.command} - ${command.description}`);
+            messageText += `/${command.command} - ${command.description}\n`;
         }
+        await this.sendMessageToUser(chatId, messageText);
     }
 
     private async activateSave(chatId: number): Promise<void> {
