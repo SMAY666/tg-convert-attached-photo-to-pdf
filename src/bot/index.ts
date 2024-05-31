@@ -33,44 +33,41 @@ class Bot {
         description: string
     }[];
 
-    private readonly users: Map<string, {inProcess: boolean, photos: Buffer[]}>;
+    private readonly users: Map<string, { inProcess: boolean, photos: Buffer[] }>;
     private serverPdfName: string;
 
     // ----- [ PRIVATE METHODS ] ---------------------------------------------------------------------------------------
 
     private userHasAccess(username: string): boolean {
         return ENV.WHITE_LIST.includes(username);
+
     }
 
     private checkUpdates(): void {
         this.botInstance.on('message', async (message) => {
-            if (!message.from?.username || !this.userHasAccess(message.from?.username)) {
-                await this.sendMessageToUser(message.chat.id, 'У вас нет доступа для взаимодействия со мной');
-            } else {
-                const userPhotos = this.users.get(message.chat.id.toString())?.photos;
-                switch (message.text) {
-                    case '/start':
-                        await this.showInstruction(message.chat.id);
-                        break;
-                    case '/help':
-                        await this.showInstruction(message.chat.id);
-                        break;
-                    case '/save':
-                        await this.activateSave(message.chat.id);
-                        break;
-                    case '/photos':
-                        await this.sendMessageToUser(message.chat.id, `Кол-во фотографий: ${userPhotos?.length ?? 0}`);
-                        if (userPhotos && userPhotos.length > 0 && userPhotos.length <= 5) {
-                            await this.sendMessageToUser(message.chat.id, undefined, undefined, userPhotos);
-                        }
-                        break;
-                    case '/done':
-                        await this.doneSave(message.chat.id);
-                        break;
-                    default:
-                        await this.getAttachments(message);
-                        break;
-                }
+            const userPhotos = this.users.get(message.chat.id.toString())?.photos;
+            switch (message.text) {
+                case '/start':
+                    await this.showInstruction(message.chat.id);
+                    break;
+                case '/help':
+                    await this.showInstruction(message.chat.id);
+                    break;
+                case '/save':
+                    await this.activateSave(message.chat.id);
+                    break;
+                case '/photos':
+                    await this.sendMessageToUser(message.chat.id, `Кол-во фотографий: ${userPhotos?.length ?? 0}`);
+                    if (userPhotos && userPhotos.length > 0 && userPhotos.length <= 5) {
+                        await this.sendMessageToUser(message.chat.id, undefined, undefined, userPhotos);
+                    }
+                    break;
+                case '/done':
+                    await this.doneSave(message.chat.id);
+                    break;
+                default:
+                    await this.getAttachments(message);
+                    break;
             }
         });
     }
@@ -161,7 +158,7 @@ class Bot {
 
     public async start(): Promise<void> {
         await this.botInstance.setMyCommands(this.commands);
-        console.log(`[${Date.now()}] Bot started`);
+        console.log(`[${new Date().toISOString()}] Bot started`);
         this.checkUpdates();
     }
 
